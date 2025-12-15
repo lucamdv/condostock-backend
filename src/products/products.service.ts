@@ -1,16 +1,25 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'; // <--- Importe as exceptions
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma } from '@prisma/client'; // Import para tipar o erro
 
 @Injectable()
 export class ProductsService {
-  constructor(private prisma: PrismaService) {} // Injeção do banco
+  constructor(private prisma: PrismaService) {}
 
   async create(createProductDto: CreateProductDto) {
-    return this.prisma.product.create({
-      data: createProductDto,
-    });
+    try {
+      return await this.prisma.product.create({
+        data: createProductDto,
+      });
+    } catch (error) {
+      // P2002 é o código do Prisma para violação de chave única (ex: barcode repetido)
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Já existe um produto com este código de barras.');
+      }
+      throw error; // Se for outro erro, repassa (vira 500)
+    }
   }
 
   async findAll() {
@@ -18,15 +27,30 @@ export class ProductsService {
   }
 
   async findOne(id: string) {
-    return this.prisma.product.findUnique({ where: { id } });
+    const product = await this.prisma.product.findUnique({ where: { id } });
+    
+    if (!product) {
+      throw new NotFoundException(`Produto com ID ${id} não encontrado.`);
+    }
+    return product;
   }
 
-  // Deixaremos update e remove para depois se quiser focar no principal
-  update(id: string, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product`;
+  async update(id: string, updateProductDto: UpdateProductDto) {
+    // Verifica se existe antes de tentar atualizar
+    await this.findOne(id); // Já lança o 404 se não achar
+
+    return this.prisma.product.update({
+      where: { id },
+      data: updateProductDto,
+    });
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} product`;
+  async remove(id: string) {
+    // Verifica se existe antes de tentar deletar
+    await this.findOne(id); // Já lança o 404 se não achar
+
+    return this.prisma.product.delete({
+      where: { id },
+    });
   }
 }
