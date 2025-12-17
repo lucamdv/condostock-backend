@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -10,9 +10,10 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  // Validar usuário (Login)
-  async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.prisma.resident.findUnique({ where: { email } });
+  // Validar usuário (AGORA COM CPF)
+  async validateUser(cpf: string, pass: string): Promise<any> {
+    // Busca o usuário pelo CPF no banco de dados
+    const user = await this.prisma.resident.findUnique({ where: { cpf } });
 
     if (user && (await bcrypt.compare(pass, user.password))) {
       // Retorna o usuário sem a senha
@@ -26,7 +27,7 @@ export class AuthService {
   async login(user: any) {
     const payload = { 
       sub: user.id, 
-      email: user.email, 
+      cpf: user.cpf, // Payload agora usa CPF
       role: user.role, 
       name: user.name 
     };
@@ -36,9 +37,10 @@ export class AuthService {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email,
+        cpf: user.cpf,
         role: user.role,
-        apartment: user.apartment
+        apartment: user.apartment,
+        isFirstLogin: user.isFirstLogin // <--- IMPORTANTE: Envia essa flag pro Front
       }
     };
   }

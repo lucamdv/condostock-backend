@@ -9,13 +9,20 @@ export class ResidentsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createResidentDto: CreateResidentDto) {
+    // 1. Gera senha padrão: 4 primeiros dígitos do CPF
+    const cleanCpf = createResidentDto.cpf.replace(/\D/g, ''); 
+    const defaultPassword = cleanCpf.substring(0, 4); 
+    
+    // 2. Criptografa
     const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(createResidentDto.password, salt);
+    const hashedPassword = await bcrypt.hash(defaultPassword, salt);
 
+    // 3. Salva no banco
     return this.prisma.resident.create({
       data: {
         ...createResidentDto,
         password: hashedPassword,
+        isFirstLogin: true, // Força a troca
         account: {
           create: {
             balance: 0,
@@ -39,7 +46,6 @@ export class ResidentsService {
     });
   }
 
-  // O MÉTODO QUE FALTAVA 👇
   async getHistory(id: string) {
     return this.prisma.sale.findMany({
       where: { residentId: id },
@@ -52,16 +58,28 @@ export class ResidentsService {
     });
   }
 
-  update(id: string, updateResidentDto: UpdateResidentDto) {
-    // Se estiver atualizando a senha, precisa criptografar de novo
-    if (updateResidentDto.password) {
-       // Nota: Num cenário real faríamos o hash aqui também, 
-       // mas por enquanto vamos deixar simples para não complicar o DTO de update
-    }
-
+  // --- MÉTODO CORRIGIDO ---
+  async update(id: string, updateResidentDto: UpdateResidentDto) {
+    // Removemos a lógica de 'if (updateResidentDto.password)' daqui.
+    // Alterações de senha devem ser feitas exclusivamente pela rota changePassword.
+    
     return this.prisma.resident.update({
       where: { id },
       data: updateResidentDto,
+    });
+  }
+
+  // Método exclusivo para troca de senha
+  async changePassword(id: string, newPass: string) {
+    const salt = await bcrypt.genSalt();
+    const hash = await bcrypt.hash(newPass, salt);
+    
+    return this.prisma.resident.update({
+        where: { id },
+        data: { 
+            password: hash,
+            isFirstLogin: false
+        }
     });
   }
 

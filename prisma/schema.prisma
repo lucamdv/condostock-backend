@@ -60,26 +60,29 @@ model Stock {
   @@map("stocks")
 }
 
-// --- CONDOMÍNIO: MORADORES (LOGIN + HIERARQUIA) ---
+// --- CONDOMÍNIO: MORADORES (LOGIN CPF + HIERARQUIA) ---
 
 model Resident {
   id        String   @id @default(uuid())
   
-  // --- Autenticação ---
-  name      String
-  email     String   @unique // Login do sistema
-  password  String   // Senha criptografada
-  role      Role     @default(RESIDENT)
+  // --- Autenticação Nova (CPF) ---
+  name         String
+  cpf          String   @unique // O NOVO LOGIN (Obrigatório e Único)
+  password     String   // Senha (Hash)
+  role         Role     @default(RESIDENT)
+  isFirstLogin Boolean  @default(true) // Obriga a troca de senha no 1º acesso
+  
+  // --- Dados de Contato (Opcionais) ---
+  email     String?  // Agora é opcional, apenas para recados
+  phone     String?
   
   // --- Dados Residenciais ---
   apartment String   // Ex: 302
   block     String   // Ex: A
-  phone     String?
-  cpf       String?  @unique
   
   // --- Controle & Hierarquia ---
   active       Boolean @default(true)  // Bloqueio por inadimplência
-  approved     Boolean @default(false) // Aprovação do Síndico
+  approved     Boolean @default(true)  // Aprovação automática para agilizar
   
   isMainTenant Boolean @default(true)  // É o titular da conta?
   parentId     String?                 // Se for dependente, ID do titular

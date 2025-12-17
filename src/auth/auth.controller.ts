@@ -7,13 +7,11 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Post('login')
-  @ApiOperation({ summary: 'Entrar no sistema (Retorna Token)' })
+@Post('login')
   async login(@Body() body: any) {
-    const user = await this.authService.validateUser(body.email, body.password);
-    if (!user) {
-      throw new UnauthorizedException('Email ou senha inválidos');
-    }
+    // Front vai mandar { cpf: '...', password: '...' }
+    const user = await this.authService.validateUser(body.cpf, body.password);
+    if (!user) throw new UnauthorizedException();
     return this.authService.login(user);
   }
 }

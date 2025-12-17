@@ -51,15 +51,16 @@ CREATE TABLE "stocks" (
 CREATE TABLE "residents" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
+    "cpf" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "role" "Role" NOT NULL DEFAULT 'RESIDENT',
+    "isFirstLogin" BOOLEAN NOT NULL DEFAULT true,
+    "email" TEXT,
+    "phone" TEXT,
     "apartment" TEXT NOT NULL,
     "block" TEXT NOT NULL,
-    "phone" TEXT,
-    "cpf" TEXT,
     "active" BOOLEAN NOT NULL DEFAULT true,
-    "approved" BOOLEAN NOT NULL DEFAULT false,
+    "approved" BOOLEAN NOT NULL DEFAULT true,
     "isMainTenant" BOOLEAN NOT NULL DEFAULT true,
     "parentId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -108,9 +109,6 @@ CREATE UNIQUE INDEX "products_barcode_key" ON "products"("barcode");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "stocks_batchId_key" ON "stocks"("batchId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "residents_email_key" ON "residents"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "residents_cpf_key" ON "residents"("cpf");
