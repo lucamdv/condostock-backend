@@ -22,8 +22,30 @@ export class ProductsService {
     }
   }
 
-  async findAll() {
-    return this.prisma.product.findMany();
+ async findAll() {
+    // Busca produtos incluindo os Lotes e os Estoques
+    const products = await this.prisma.product.findMany({
+      include: {
+        batches: {
+          include: { stock: true },
+        },
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    // Mapeia para retornar um campo extra 'totalStock'
+    return products.map((product) => {
+      const totalStock = product.batches.reduce((acc, batch) => {
+        return acc + (batch.stock?.quantity || 0);
+      }, 0);
+
+      // Removemos a sujeira (batches) e retornamos o objeto limpo com o total
+      const { batches, ...productData } = product;
+      return {
+        ...productData,
+        totalStock, // <--- O campo mágico novo
+      };
+    });
   }
 
   async findOne(id: string) {

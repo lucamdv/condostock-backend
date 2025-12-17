@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "Role" AS ENUM ('ADMIN', 'SINDICO', 'OPERADOR');
+CREATE TYPE "Role" AS ENUM ('ADMIN', 'RESIDENT');
 
 -- CreateEnum
 CREATE TYPE "AccountStatus" AS ENUM ('ACTIVE', 'BLOCKED');
@@ -9,19 +9,6 @@ CREATE TYPE "SaleStatus" AS ENUM ('PENDING', 'COMPLETED', 'CANCELLED');
 
 -- CreateEnum
 CREATE TYPE "PaymentType" AS ENUM ('CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'CASH', 'FIADO');
-
--- CreateTable
-CREATE TABLE "users" (
-    "id" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "password" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "role" "Role" NOT NULL DEFAULT 'ADMIN',
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
-);
 
 -- CreateTable
 CREATE TABLE "products" (
@@ -64,10 +51,17 @@ CREATE TABLE "stocks" (
 CREATE TABLE "residents" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "unit" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "role" "Role" NOT NULL DEFAULT 'RESIDENT',
+    "apartment" TEXT NOT NULL,
+    "block" TEXT NOT NULL,
     "phone" TEXT,
     "cpf" TEXT,
     "active" BOOLEAN NOT NULL DEFAULT true,
+    "approved" BOOLEAN NOT NULL DEFAULT false,
+    "isMainTenant" BOOLEAN NOT NULL DEFAULT true,
+    "parentId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -110,13 +104,13 @@ CREATE TABLE "sale_items" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
-
--- CreateIndex
 CREATE UNIQUE INDEX "products_barcode_key" ON "products"("barcode");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "stocks_batchId_key" ON "stocks"("batchId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "residents_email_key" ON "residents"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "residents_cpf_key" ON "residents"("cpf");
@@ -129,6 +123,9 @@ ALTER TABLE "batches" ADD CONSTRAINT "batches_productId_fkey" FOREIGN KEY ("prod
 
 -- AddForeignKey
 ALTER TABLE "stocks" ADD CONSTRAINT "stocks_batchId_fkey" FOREIGN KEY ("batchId") REFERENCES "batches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "residents" ADD CONSTRAINT "residents_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "residents"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "resident_accounts" ADD CONSTRAINT "resident_accounts_residentId_fkey" FOREIGN KEY ("residentId") REFERENCES "residents"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

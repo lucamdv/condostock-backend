@@ -9,39 +9,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- GESTÃO DE USUÁRIOS E ACESSO [cite: 106] ---
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String   // Será hash bcrypt [cite: 74]
-  name      String
-  role      Role     @default(ADMIN) // Controle de permissões [cite: 75]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("users")
-}
-
+// --- PERMISSÕES DE ACESSO ---
 enum Role {
-  ADMIN
-  SINDICO
-  OPERADOR
+  ADMIN     // Síndico (Tem acesso total)
+  RESIDENT  // Morador (Apenas compra e vê saldo)
 }
 
-// --- CORE BACKSTOCK: PRODUTOS E ESTOQUE [cite: 19] ---
+// --- CORE BACKSTOCK: PRODUTOS E ESTOQUE ---
 
 model Product {
   id          String   @id @default(uuid())
   name        String
   description String?
-  barcode     String?  @unique // Importante para o PDV [cite: 29]
+  barcode     String?  @unique // Leitura de código de barras no PDV
   price       Decimal  @db.Decimal(10, 2)
-  minStock    Int      @default(5) // Para alertas de estoque mínimo [cite: 23]
+  minStock    Int      @default(5) 
   imageUrl    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  batches     Batch[]  // Um produto pode ter vários lotes
+  batches     Batch[]  // Controle de Lotes (Validade)
   saleItems   SaleItem[]
 
   @@map("products")
@@ -49,14 +36,13 @@ model Product {
 
 model Batch {
   id          String    @id @default(uuid())
-  code        String    // Código do lote impresso na embalagem
-  expiryDate  DateTime  // Fundamental para controle de validade [cite: 21]
+  code        String    // Código do lote
+  expiryDate  DateTime  // Validade (FEFO)
   productId   String
   product     Product   @relation(fields: [productId], references: [id])
   
-  // Estoque é rastreado por lote para garantir FIFO/FEFO
-  stock       Stock?    
-
+  stock       Stock?    // Estoque vinculado ao lote
+  
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -67,28 +53,47 @@ model Stock {
   id        String   @id @default(uuid())
   batchId   String   @unique
   batch     Batch    @relation(fields: [batchId], references: [id])
-  quantity  Int      // Quantidade real deste lote específico [cite: 20]
+  quantity  Int      // Quantidade real
   
   updatedAt DateTime @updatedAt
 
   @@map("stocks")
 }
 
-// --- CONDOMÍNIO: MORADORES E CONTAS [cite: 35] ---
+// --- CONDOMÍNIO: MORADORES (LOGIN + HIERARQUIA) ---
 
 model Resident {
-  id          String   @id @default(uuid())
-  name        String
-  unit        String   // Apartamento/Bloco [cite: 36]
-  phone       String?
-  cpf         String?  @unique
-  active      Boolean  @default(true) // Bloqueio por inadimplência [cite: 42]
+  id        String   @id @default(uuid())
   
-  account     ResidentAccount?
-  sales       Sale[]
+  // --- Autenticação ---
+  name      String
+  email     String   @unique // Login do sistema
+  password  String   // Senha criptografada
+  role      Role     @default(RESIDENT)
+  
+  // --- Dados Residenciais ---
+  apartment String   // Ex: 302
+  block     String   // Ex: A
+  phone     String?
+  cpf       String?  @unique
+  
+  // --- Controle & Hierarquia ---
+  active       Boolean @default(true)  // Bloqueio por inadimplência
+  approved     Boolean @default(false) // Aprovação do Síndico
+  
+  isMainTenant Boolean @default(true)  // É o titular da conta?
+  parentId     String?                 // Se for dependente, ID do titular
+  
+  // Relações Familiares (Árvore)
+  guardian     Resident?   @relation("FamilyTree", fields: [parentId], references: [id])
+  dependents   Resident[]  @relation("FamilyTree")
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  // Relações Financeiras
+  account      ResidentAccount?
+  sales        Sale[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@map("residents")
 }
@@ -98,8 +103,8 @@ model ResidentAccount {
   residentId  String   @unique
   resident    Resident @relation(fields: [residentId], references: [id])
   
-  balance     Decimal  @default(0.00) @db.Decimal(10, 2) // Saldo devedor atual
-  creditLimit Decimal  @default(200.00) @db.Decimal(10, 2) // Limite configurável [cite: 38]
+  balance     Decimal  @default(0.00) @db.Decimal(10, 2) // Saldo devedor
+  creditLimit Decimal  @default(200.00) @db.Decimal(10, 2) // Limite de crédito
   
   status      AccountStatus @default(ACTIVE)
 
@@ -110,10 +115,10 @@ model ResidentAccount {
 
 enum AccountStatus {
   ACTIVE
-  BLOCKED // Para inadimplentes
+  BLOCKED
 }
 
-// --- FRENTE DE LOJA (PDV) [cite: 28] ---
+// --- FRENTE DE LOJA (PDV) ---
 
 model Sale {
   id          String      @id @default(uuid())
@@ -121,13 +126,13 @@ model Sale {
   status      SaleStatus  @default(COMPLETED)
   paymentType PaymentType 
   
-  // Venda pode ser anônima ou vinculada a um morador (fiado)
+  // Venda pode ser anônima ou fiado (vinculada a morador)
   residentId  String?
   resident    Resident?   @relation(fields: [residentId], references: [id])
 
   items       SaleItem[]
   
-  createdAt   DateTime    @default(now()) // Data da venda
+  createdAt   DateTime    @default(now())
 
   @@map("sales")
 }
@@ -135,7 +140,7 @@ model Sale {
 enum SaleStatus {
   PENDING
   COMPLETED
-  CANCELLED // Suporte a estorno [cite: 32]
+  CANCELLED
 }
 
 enum PaymentType {
@@ -143,7 +148,7 @@ enum PaymentType {
   DEBIT_CARD
   PIX
   CASH
-  FIADO // Saldo na conta do morador [cite: 39]
+  FIADO // Débito na conta do morador
 }
 
 model SaleItem {
@@ -155,7 +160,7 @@ model SaleItem {
   product   Product @relation(fields: [productId], references: [id])
   
   quantity  Int
-  unitPrice Decimal @db.Decimal(10, 2) // Preço no momento da venda (histórico)
+  unitPrice Decimal @db.Decimal(10, 2)
 
   @@map("sale_items")
 }

@@ -7,9 +7,10 @@ import { StocksModule } from './stocks/stocks.module';
 import { SalesModule } from './sales/sales.module';
 import { ResidentsModule } from './residents/residents.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, ProductsModule, StocksModule, SalesModule, ResidentsModule, DashboardModule],
+  imports: [PrismaModule, ProductsModule, StocksModule, SalesModule, ResidentsModule, DashboardModule, AuthModule],
   controllers: [AppController],
   providers: [AppService],
 })

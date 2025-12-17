@@ -1,24 +1,39 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateResidentDto {
-  @ApiProperty({ example: 'João da Silva', description: 'Nome completo do morador' })
+  @ApiProperty({ example: 'João da Silva' })
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'Bloco A - Apt 302', description: 'Identificação da unidade' })
+  @ApiProperty({ example: 'joao@condo.com' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ example: 'senha123', description: 'Senha para login' })
+  @IsString()
+  @IsNotEmpty() // Vamos exigir senha. Se o front não mandar, o service cria uma padrão.
+  password: string;
+
+  @ApiProperty({ example: '302' })
   @IsString()
   @IsNotEmpty()
-  unit: string;
+  apartment: string;
 
-  @ApiPropertyOptional({ example: '123.456.789-00', description: 'CPF para Nota Fiscal (opcional)' })
+  @ApiProperty({ example: 'A' })
   @IsString()
-  @IsOptional()
-  cpf?: string;
+  @IsNotEmpty()
+  block: string;
 
-  @ApiPropertyOptional({ example: '(11) 99999-9999', description: 'Telefone para contato' })
+  @ApiProperty({ example: '99999-9999', required: false })
   @IsString()
   @IsOptional()
   phone?: string;
+
+  @ApiProperty({ example: true, required: false })
+  @IsBoolean()
+  @IsOptional()
+  isMainTenant?: boolean;
 }
